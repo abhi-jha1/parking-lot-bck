@@ -1,11 +1,14 @@
 const express = require('express');
+require('dotenv').config(); 
+const db = require('./config/db'); // Your promise-based pool
 const app = express();
-const port = 3000;
+const parkingHistory = require('./routes/historyRoutes');
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.use('/api/parking', parkingHistory);
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
