@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const openapiSpec = require('./docs/openapi');
 const parkingRoutes = require('./routes/parkingRoutes');
 
 const app = express();
@@ -13,6 +15,11 @@ app.use(express.urlencoded({ extended: false }));
 app.get('/', (req, res) => {
   res.status(200).send('Parking Management System API is live.');
 });
+
+app.get('/api-docs.json', (req, res) => {
+  res.json(openapiSpec);
+});
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 // 3. Mount Application Routes
 // This wires up all your parking endpoints under the '/api/parking' base path
