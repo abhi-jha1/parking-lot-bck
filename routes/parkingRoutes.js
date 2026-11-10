@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const parkingController = require('../controllers/historyController');
+const parkingController = require('../controllers/parkingController');
 
 // Route for checking in a vehicle (POST /api/parking/checkin)
 router.post('/checkin', parkingController.checkInVehicle);

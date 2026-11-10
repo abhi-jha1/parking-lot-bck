@@ -6,7 +6,8 @@ const app = express();
 
 // 1. Global Middlewares
 app.use(cors());         
-app.use(express.json());  
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // 2. Base Diagnostic Route
 app.get('/', (req, res) => {

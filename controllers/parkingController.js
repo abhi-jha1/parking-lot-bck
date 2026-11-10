@@ -5,7 +5,7 @@ const History = require('../models/historyModel');
 // 1. CHECK-IN: UI sends { "car_number": "KA01MG1234" }
 exports.checkInVehicle = async (req, res) => {
   try {
-    const { car_number } = req.body;
+    const { car_number } = req.body ?? {};
 
     if (!car_number) {
       return res.status(400).json({ error: 'car_number is required' });
@@ -47,7 +47,11 @@ exports.checkInVehicle = async (req, res) => {
 // 2. CHECK-OUT: UI sends { "car_number": "KA01MG1234" }
 exports.checkOutVehicle = async (req, res) => {
   try {
-    const { car_number } = req.body;
+    const { car_number } = req.body ?? {};
+
+    if (!car_number) {
+      return res.status(400).json({ error: 'car_number is required' });
+    }
 
     // Step A: Translate car_number to user_id
     const user = await User.findByCarNumber(car_number);
