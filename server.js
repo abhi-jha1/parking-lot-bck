@@ -1,14 +1,27 @@
-const express = require('express');
-require('dotenv').config(); 
-const db = require('./config/db'); // Your promise-based pool
-const app = express();
-const parkingHistory = require('./routes/historyRoutes');
+const app = require('./app');
+const db = require('./config/db');
+require('dotenv').config();
 
-app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
-app.use('/api/parking', parkingHistory);
+async function startServer() {
+  try {
+    // 1. Run a lightweight sanity query to test the database pool connection
+    await db.query('SELECT 1');
+    console.log('Success: Backend connected to MySQL database ("parking_management") via parking_user!');
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+    // 2. Start listening for incoming traffic from your UI/Postman only after DB connection succeeds
+    app.listen(PORT, () => {
+      console.log(`Server spinning smoothly at http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error: Could not connect to the MySQL database server.');
+    console.error('Error Details:', error.message);
+    
+    // Exit the process immediately with a failure code (1) to prevent a zombie server state
+    process.exit(1); 
+  }
+}
+
+// Execute the boot loader sequence
+startServer();
