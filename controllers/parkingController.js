@@ -1,11 +1,17 @@
 const db = require('../config/db');
+const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
 const History = require('../models/historyModel');
+
+const PASSWORD_ROUNDS = 12;
 
 // 1. CHECK-IN: UI sends { "car_number": "KA01MG1234" }
 exports.checkInVehicle = async (req, res) => {
   try {
-    const { car_number } = req.body ?? {};
+    const rawCarNumber = req.body?.car_number;
+    const car_number = typeof rawCarNumber === 'string'
+      ? rawCarNumber.trim().toUpperCase()
+      : '';
 
     if (!car_number) {
       return res.status(400).json({ error: 'car_number is required' });
@@ -16,8 +22,8 @@ exports.checkInVehicle = async (req, res) => {
     let userId;
 
     if (!user) {
-      // If the car has never parked here before, register it automatically
-      userId = await User.create(car_number);
+      const temporaryPasswordHash = await bcrypt.hash(car_number, PASSWORD_ROUNDS);
+      userId = await User.create(car_number, temporaryPasswordHash, true);
     } else {
       userId = user.id;
 
@@ -75,10 +81,28 @@ exports.checkOutVehicle = async (req, res) => {
 // 3. FETCH HISTORY FOR UI: UI requests via URL parameter (e.g., /api/parking/history/KA01MG1234)
 exports.getVehicleHistory = async (req, res) => {
   try {
-    const { car_number } = req.params;
+    const car_number = typeof req.params.car_number === 'string'
+      ? req.params.car_number.trim().toUpperCase()
+      : '';
 
-    // Step A: Translate car_number to user_id
-    const user = await User.findByCarNumber(car_number);
+    if (!car_number) {
+      return res.status(400).json({ error: 'car_number is required' });
+    }
+
+    let user;
+    if (req.user.role === 'admin') {
+      user = await User.findByCarNumber(car_number);
+    } else {
+      user = await User.findById(req.user.sub);
+      if (!user) {
+        return res.status(401).json({ error: 'Authenticated account no longer exists' });
+      }
+
+      if (user.car_number !== car_number) {
+        return res.status(403).json({ error: 'You can only view your own parking history' });
+      }
+    }
+
     if (!user) {
       return res.status(404).json({ error: 'No history found for this vehicle registration.' });
     }

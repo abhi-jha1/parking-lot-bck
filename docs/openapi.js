@@ -13,16 +13,86 @@ const openapiSpec = {
   ],
   tags: [
     {
+      name: 'Authentication',
+      description: 'Log in to receive an authentication cookie and manage account passwords.'
+    },
+    {
       name: 'Parking',
       description: 'Vehicle parking operations'
     }
   ],
   paths: {
+    '/api/auth/login': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Log in and set an authentication cookie',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AuthRequest' },
+              example: { car_number: 'KA03NN6173', password: 'a-strong-password' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'Login successful; sets an HttpOnly authentication cookie.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AuthResponse' }
+              }
+            }
+          },
+          400: { description: 'Invalid input.' },
+          401: { description: 'Invalid car number or password.' },
+          500: { description: 'Server error.' }
+        }
+      }
+    },
+    '/api/auth/logout': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Log out and clear the authentication cookie',
+        responses: {
+          200: { description: 'Authentication cookie cleared.' }
+        }
+      }
+    },
+    '/api/auth/change-password': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'Change the account password',
+        description: 'For accounts created during admin check-in, use the car number as the current password and choose a new password before using parking endpoints.',
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['current_password', 'new_password'],
+                properties: {
+                  current_password: { type: 'string' },
+                  new_password: { type: 'string', minLength: 8 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Password changed and authentication cookie refreshed.' },
+          400: { description: 'Invalid password input.' },
+          401: { description: 'Current password is incorrect.' }
+        }
+      }
+    },
     '/api/parking/checkin': {
       post: {
         tags: ['Parking'],
         summary: 'Check in a vehicle',
-        description: 'Creates a vehicle record if needed, then starts a parking session.',
+        security: [{ cookieAuth: [] }],
+        description: 'Admin-only. Creates a vehicle record if needed, then starts a parking session. A new account receives the car number as a temporary password and must change it before parking actions.',
         requestBody: {
           required: true,
           content: {
@@ -49,6 +119,8 @@ const openapiSpec = {
               }
             }
           },
+          401: { description: 'Authentication required or token invalid/expired.' },
+          403: { description: 'Admin access required or temporary password must be changed.' },
           500: {
             description: 'Server error.',
             content: {
@@ -63,7 +135,9 @@ const openapiSpec = {
     '/api/parking/checkout': {
       post: {
         tags: ['Parking'],
-        summary: 'Check out a vehicle',
+        summary: 'Check out a vehicle (admin only)',
+        security: [{ cookieAuth: [] }],
+        description: 'Requires an authenticated admin account whose temporary password has been changed.',
         requestBody: {
           required: true,
           content: {
@@ -98,6 +172,8 @@ const openapiSpec = {
               }
             }
           },
+          401: { description: 'Authentication required or token invalid/expired.' },
+          403: { description: 'Admin access required or temporary password must be changed.' },
           500: {
             description: 'Server error.',
             content: {
@@ -113,6 +189,8 @@ const openapiSpec = {
       get: {
         tags: ['Parking'],
         summary: 'Get parking history for a vehicle',
+        security: [{ cookieAuth: [] }],
+        description: 'Customers can view only their own vehicle history. Admins can view history for any vehicle.',
         parameters: [
           {
             name: 'car_number',
@@ -143,6 +221,8 @@ const openapiSpec = {
               }
             }
           },
+          401: { description: 'Authentication required or token invalid/expired.' },
+          403: { description: 'Customers may only view their own vehicle history; temporary passwords must be changed first.' },
           500: {
             description: 'Server error.',
             content: {
@@ -156,7 +236,31 @@ const openapiSpec = {
     }
   },
   components: {
+    securitySchemes: {
+      cookieAuth: {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'token'
+      }
+    },
     schemas: {
+      AuthRequest: {
+        type: 'object',
+        required: ['car_number', 'password'],
+        properties: {
+          car_number: { type: 'string', example: 'KA03NN6173' },
+          password: { type: 'string', minLength: 8, example: 'a-strong-password' }
+        }
+      },
+      AuthResponse: {
+        type: 'object',
+        required: ['message', 'car_number', 'password_change_required'],
+        properties: {
+          message: { type: 'string', example: 'Login successful' },
+          car_number: { type: 'string', example: 'KA03NN6173' },
+          password_change_required: { type: 'boolean', example: false }
+        }
+      },
       VehicleRequest: {
         type: 'object',
         required: ['car_number'],
