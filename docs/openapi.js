@@ -81,9 +81,23 @@ const openapiSpec = {
           }
         },
         responses: {
-          200: { description: 'Password changed and authentication cookie refreshed.' },
+          200: {
+            description: 'Password changed and authentication cookie refreshed.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['message'],
+                  properties: {
+                    message: { type: 'string', example: 'Password changed successfully' }
+                  }
+                }
+              }
+            }
+          },
           400: { description: 'Invalid password input.' },
-          401: { description: 'Current password is incorrect.' }
+          401: { description: 'Authentication is missing/invalid, or the current password is incorrect.' },
+          500: { description: 'Server error.' }
         }
       }
     },
